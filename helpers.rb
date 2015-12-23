@@ -6,7 +6,6 @@ def time_back(ending_period, increment)
   end
 end
 
-
 def standard_deviation(arg)
   mean = arg.inject{|sum,x| sum + x } / arg.size.to_f
   (arg.inject(0){|sum,x| sum + ((x-mean) ** 2) } / arg.size) ** 0.5

@@ -45,11 +45,11 @@ class ReportGenerator
     end_date = result['end_date'] = portfolio.periods.keys.last
     result['table'] = {}
     result['table']['a_geometric'] = geometric_average(start_date, end_date)
-    result['table']['b_rithmetic'] = arithmetic_average(start_date, end_date, by_period_results)
+    result['table']['b_arithmetic'] = arithmetic_average(start_date, end_date, by_period_results)
     result['table']['c_st_deviation_by_period'] = st_deviation_by_period(start_date, end_date, by_period_results)
     result['table']['d_st_deviation_annualized'] = st_deviation_annualized(start_date, end_date, by_period_results)
-    result['table']['e_sharpe'] = sharpe(result['table'])
-    result['table']['f_max_drawdown'] = max_drawdown_hash(parameters["initial_balance"], by_period_results)
+    result['table']['e_max_drawdown'] = max_drawdown_hash(parameters["initial_balance"], by_period_results)
+    result['table']['f_sharpe'] = sharpe(result['table'])
     result
   end
 
