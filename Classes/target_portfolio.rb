@@ -1,5 +1,5 @@
 class TargetPortfolio
-  attr_accessor :positions, :pusher_chananel
+  attr_accessor :positions
 
   def initialize(args)
     @current_portfolio_balance = args[:current_portfolio_balance]
@@ -9,8 +9,7 @@ class TargetPortfolio
     @positions = {}
   end
 
-  def build(pusher_chananel)
-    @pusher_chananel = pusher_chananel
+  def build
     build_initial_positions
     spend_balance
   end

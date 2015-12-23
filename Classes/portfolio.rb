@@ -1,16 +1,16 @@
 class Portfolio
-  attr_reader :position_count
-  attr_accessor :periods, :pusher_channel
+  attr_reader :position_count, :data_table
+  attr_accessor :periods
 
-  def initialize(args)
-    @sell_method = args[:sell_method]
+  def initialize(data_table, args)
+    # @sell_method = args[:sell_method]  - maybe in the future
+    @data_table = data_table
     @position_count = args[:position_count]
     @initial_balance = args[:initial_balance]
     @periods = {}
     @periods[args[:start_date]] = {}
     @periods[args[:start_date]][:positions] = {}
     @periods[args[:start_date]][:cash] = @initial_balance
-    @pusher_channel = args[:pusher_channel]
   end
 
   def position(cid, as_of_date)
@@ -49,7 +49,7 @@ class Portfolio
 
   def sell_non_target_stocks(args)
     today = args[:new_period]
-    Pusher.trigger(pusher_channel, 'update', { message: "Processing #{today} - selling off old stocks" })
+    puts "Processing #{today} - selling off old stocks"
     target = args[:target]
     full_sell_list = periods[today][:positions].keys - target.keys
     full_sell_list.each do |stock|
@@ -70,8 +70,8 @@ class Portfolio
 
   def add_target_stocks_not_already_held(args)
     target = args[:target]
-    Pusher.trigger(pusher_channel, 'update', { message: "Processing #{args[:new_period]} - buying new stocks" })
-    stocks_to_add = target.select { |cid, position| periods[args[:new_period]][:positions].keys.exclude? cid }
+    puts "Processing #{args[:new_period]} - buying new stocks"
+    stocks_to_add = target.select { |cid, position| !periods[args[:new_period]][:positions].keys.include? cid }
     stocks_to_add.each{ |cid, position| buy(date: args[:new_period], stock: cid, amount: position[:share_count]) }
   end
 
@@ -95,7 +95,7 @@ class Portfolio
     if periods[today][:positions].keys.include? this_stock
       this_position = periods[today][:positions][this_stock]
     else
-      this_position = periods[today][:positions][this_stock] = Position.new(stock: this_stock, current_date: today)
+      this_position = periods[today][:positions][this_stock] = Position.new(data_table, {stock: this_stock, current_date: today})
     end
     this_position.increase(args[:amount], today)
     periods[today][:cash] = (periods[today][:cash] - this_position.pieces[today][:share_count] * this_position.pieces[today][:entry_price]).round(2)

@@ -34,7 +34,7 @@ class PriceTable
   end
 
   def where(args)
-    main_table[(args[:cid] + '$' + args[:period]).to_sym]
+    main_table["#{args[:cid]}$#{args[:period]}".to_sym]
   end
 
   def keys
@@ -48,17 +48,31 @@ class PriceTable
   def last
     main_table[keys.last]
   end
+
+  def all_periods(args=nil)
+    # select(:period).map(&:period).uniq
+    # if args[:single_period] == '1'
+    #   start_date = Date.strptime(args[:start_date], '%Y-%m-%d')
+    #   [start_date.to_s, (start_date+1.year).to_s]
+    # else
+    #   range = args[:development] == true ? (1993..2001).to_a : (1993..2014).to_a
+    #   result = []
+    #   range.each { |year| result << "#{year}-12-31" }
+    #   result
+    # end
+
+    result = []
+    (1993..2014).each { |year| result << "#{year}-12-31" }
+    result
+  end
   
   private
 
   def load
     start_time = Time.now
-
     periods = []
     (1993..2014).each { |year| periods << "12/31/#{year}" }
-
     company_table = CompanyTable.new
-
     CSV.foreach("data - annual since 1993.csv", headers: true, encoding: 'ISO-8859-1') do |row|
       for i in 0..periods.size - 1
         ebit = row[i * 6 + 5].to_f.round(3)
@@ -78,7 +92,6 @@ class PriceTable
           roc: ebit > 0 ? (ebit / (net_ppe + nwc)).round(3) : 0,
           price: price,
           delisted: false }
-        
         delisted_check = /(\d+\/\d+\/\d+)/.match(row[i * 6 + 9])
         if delisted_check
           new_entry_fields[:delisted] = true
@@ -87,10 +100,8 @@ class PriceTable
         new_entry = PricePoint.new(new_entry_fields)
         self.add(new_entry)
       end   # all PricePoints for this CID filled
-
       company_table.add(Company.new(name: row[0], cid: row[2], ticker: row[3]))
     end  # all PricePoints filled
-
     puts "Data loaded! Time spent: #{(Time.now - start_time).round(2)} seconds."
   end
 end

@@ -1,8 +1,9 @@
 class Position
-  attr_reader :cid
+  attr_reader :cid, :data_table
   attr_accessor :pieces, :current_date
 
-  def initialize(args)
+  def initialize(data_table, args)
+    @data_table = data_table
     @cid = args[:stock]
     @current_date = args[:current_date]
     @pieces = {}
@@ -14,7 +15,7 @@ class Position
 
   def market_value(as_of_date=nil)
     date = as_of_date || current_date
-    (share_count * PricePoint.where(cid: cid, period: date).first.price).round(2)
+    (share_count * data_table.where(cid: cid, period: date).price).round(2)
   end
 
   def cost
@@ -26,15 +27,15 @@ class Position
   end
 
   def profit
-    pieces.inject(0) { |total, piece| total + (piece[1][:share_count] * (PricePoint.where(cid: cid, period: current_date).first.price - piece[1][:entry_price])).round(2) }
+    pieces.inject(0) { |total, piece| total + (piece[1][:share_count] * (data_table.where(cid: cid, period: current_date).price - piece[1][:entry_price])).round(2) }
   end
 
   def delisted?
-    PricePoint.where(cid: cid, period: current_date).first.delisted == true
+    data_table.where(cid: cid, period: current_date).delisted == true
   end
 
   def delisting_info
-    price_data = PricePoint.where(cid: cid, period: current_date).first
+    price_data = data_table.where(cid: cid, period: current_date)
     delisted? ? { date: price_data.delisting_date.to_s, last_price: price_data.price } : nil
   end
 
@@ -58,7 +59,7 @@ class Position
   def increase(amount, date)
     pieces[date] = {}
     pieces[date][:share_count] = amount
-    pieces[date][:entry_price] = (PricePoint.where(cid: cid, period: date).first.price).round(2)
+    pieces[date][:entry_price] = (data_table.where(cid: cid, period: date).price).round(2)
   end
 
   def pieces_sort(order)

@@ -1,8 +1,11 @@
 class ScoreCalculator
-  attr_accessor :stocks
+  attr_accessor :stocks, :data_table
 
-  def initialize(args)
-    array = PricePoint.where("period = ? AND market_cap >= ? AND market_cap <= ? AND price > 0 AND delisted = FALSE AND ltm_ebit > 0 AND roc > 0 AND earnings_yield > 0", args[:period], args[:market_cap_floor] || 50, args[:market_cap_ceiling] || 2000000)
+  def initialize(data_table, args)
+    array = data_table.subset({
+      period: args[:period],
+      cap_floor: args[:market_cap_floor],
+      cap_ceiling: args[:market_cap_ceiling] })
     @stocks = []
     array.each { |element| @stocks << element.attributes }
   end
