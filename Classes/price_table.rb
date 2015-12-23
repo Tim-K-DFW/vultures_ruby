@@ -1,10 +1,11 @@
 require 'csv'
 
 class PriceTable
-  attr_reader :main_table, :size
+  attr_reader :main_table, :size, :company_table
 
   def initialize
     @main_table = {}
+    @company_table = CompanyTable.new
     @size = 0
     load
   end
@@ -69,10 +70,11 @@ class PriceTable
   private
 
   def load
+    puts 'Loading data...'
     start_time = Time.now
     periods = []
     (1993..2014).each { |year| periods << "12/31/#{year}" }
-    company_table = CompanyTable.new
+    
     CSV.foreach("data - annual since 1993.csv", headers: true, encoding: 'ISO-8859-1') do |row|
       for i in 0..periods.size - 1
         ebit = row[i * 6 + 5].to_f.round(3)

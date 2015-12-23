@@ -1,5 +1,6 @@
 require 'pry'
 require 'date'
+load 'helpers.rb'
 
 Dir["Classes/*.rb"].each { |file| load file }
 
@@ -15,8 +16,7 @@ def engine_params
   result
 end
 
-
-
 data_table = PriceTable.new
-
 results = Engine.new(data_table, engine_params).perform
+
+binding.pry

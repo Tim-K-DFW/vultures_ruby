@@ -9,6 +9,9 @@ class Engine
   end
 
   def perform
+    puts 'Trading...'
+    start_time = Time.now
+
     @portfolio = Portfolio.new(
       data_table, {
       position_count: parameters["position_count"],
@@ -20,7 +23,8 @@ class Engine
     data_table.all_periods.each do |period|
       
       period = period.to_s
-      puts "Processing #{period} - ranking stocks"
+      puts "Processing #{period}..."
+      # puts "Processing #{period} - ranking stocks"
       
       current_market_data = ScoreCalculator.new(
         data_table,
@@ -29,7 +33,7 @@ class Engine
         period: period }
       ).assign_scores
 
-      puts "Processing #{period} - building portfolio"
+      # puts "Processing #{period} - building portfolio"
       @portfolio.carry_forward(period) unless period == parameters["start_date"]
       target_portfolio = TargetPortfolio.new(
         current_portfolio_balance: @portfolio.as_of(period)[:total_market_value],
@@ -39,7 +43,8 @@ class Engine
         ).build
       @portfolio.rebalance(new_period: period, target: target_portfolio, parameters: parameters)
     end
+    puts "Trading complete! Time spent: #{(Time.now - start_time).round(2)} seconds."
 
-    ReportGenerator.new(portfolio, parameters).generate
+    ReportGenerator.new(data_table, portfolio, parameters).generate
   end
 end

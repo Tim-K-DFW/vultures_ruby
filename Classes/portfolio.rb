@@ -27,11 +27,11 @@ class Portfolio
   end
 
   def carry_forward(new_period)
-    old_period = (Date.strptime(new_period, '%Y-%m-%d') - 1.year).to_s
+    old_period = time_back(new_period, :year)
     periods[new_period] = {}
     periods[new_period][:positions] = {}
     periods[old_period][:positions].each do |cid, old_position|
-      new_position = periods[new_period][:positions][cid] = Position.new(stock: cid, current_date: new_period)
+      new_position = periods[new_period][:positions][cid] = Position.new(data_table, { stock: cid, current_date: new_period })
       old_position.pieces.each do |date, piece_data|
         new_position.pieces[date] = piece_data.dup
       end
@@ -49,7 +49,7 @@ class Portfolio
 
   def sell_non_target_stocks(args)
     today = args[:new_period]
-    puts "Processing #{today} - selling off old stocks"
+    # puts "Processing #{today} - selling off old stocks"
     target = args[:target]
     full_sell_list = periods[today][:positions].keys - target.keys
     full_sell_list.each do |stock|
@@ -59,7 +59,7 @@ class Portfolio
 
   def adjust_target_stocks_already_held(args)
     periods[args[:new_period]][:positions].each do |cid, current_position|
-      excess_holdings = current_position.share_count - (args[:target][cid].present? ? args[:target][cid][:share_count] : 0)
+      excess_holdings = current_position.share_count - (!args[:target][cid].nil? ? args[:target][cid][:share_count] : 0)
       if excess_holdings > 0
         sell(date: args[:new_period], stock: cid, amount: excess_holdings)
       elsif excess_holdings < 0
@@ -70,7 +70,7 @@ class Portfolio
 
   def add_target_stocks_not_already_held(args)
     target = args[:target]
-    puts "Processing #{args[:new_period]} - buying new stocks"
+    # puts "Processing #{args[:new_period]} - buying new stocks"
     stocks_to_add = target.select { |cid, position| !periods[args[:new_period]][:positions].keys.include? cid }
     stocks_to_add.each{ |cid, position| buy(date: args[:new_period], stock: cid, amount: position[:share_count]) }
   end
@@ -79,7 +79,7 @@ class Portfolio
     today = args[:date]
     position = periods[today][:positions][args[:stock]]
     amount = args[:amount] == :all ? position.share_count : args[:amount]
-    periods[today][:cash] = (periods[today][:cash] + amount * PricePoint.where(period: today, cid: position.cid).first.price).round(2)
+    periods[today][:cash] = (periods[today][:cash] + amount * data_table.where(period: today, cid: position.cid).price).round(2)
     
     if args[:amount] == :all
       position.pieces = {}

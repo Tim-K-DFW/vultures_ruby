@@ -1,30 +1,34 @@
 class ReportGenerator
-  attr_reader :portfolio, :parameters
+  attr_reader :portfolio, :parameters, :data_table
   attr_accessor :resuts
 
-  def initialize(portfolio, parameters)
+  def initialize(data_table, portfolio, parameters)
+    @data_table = data_table
     @portfolio = portfolio
     @parameters = parameters
     @results = {}
   end
 
   def generate
+    start_time = Time.now
+    puts "Building reports..."
     @results['parameters'] = parameters
     @results['performance'] = generate_performance
     @results['aggregated'] = aggregated_performance(@results['performance'])
     @results['positions'] = generate_positions
+    puts "Reports generated! Time spent: #{(Time.now - start_time).round(2)} seconds."
     @results
   end
 
   def generate_performance
     result = []
     portfolio.periods.each do |end_date, state|
-      puts "Building reports - Performance for the period of #{end_date}"
+      # puts "Building reports - Performance for the period of #{end_date}"
       next if end_date == portfolio.periods.first[0]
       this_period = {}
       this_period['date'] = end_date
       this_period['balance'] = portfolio.as_of(end_date)[:total_market_value]
-      this_period['sp500_value'] = PricePoint.where(cid: 'sp500', period: end_date).first.price
+      this_period['sp500_value'] = data_table.where(cid: 'sp500', period: end_date).price
       this_period['by_period'] = relative_return(single_period_start(end_date), end_date)
       this_period['annualized'] = annualized_return(this_period['by_period'])
       this_period['cumulative_cy'] = relative_return(cumulative_cy_start(end_date), end_date)
@@ -35,7 +39,7 @@ class ReportGenerator
   end
 
   def aggregated_performance(by_period_results)
-    puts 'Building reports - Aggregated performance'
+    # puts 'Building reports - Aggregated performance'
     result = {}
     start_date = result['start_date'] = portfolio.periods.first[0]
     end_date = result['end_date'] = portfolio.periods.keys.last
@@ -52,7 +56,7 @@ class ReportGenerator
   def generate_positions
     result = []
     portfolio.periods.each do |date, data|
-      puts "Building reports - Positions as of #{date}"
+      # puts "Building reports - Positions as of #{date}"
       this_period = {}
       this_period['start_date'] = date
       end_date = this_period['end_date'] = portfolio.periods.keys[portfolio.periods.keys.index(date) + 1] || ''
@@ -61,17 +65,18 @@ class ReportGenerator
       data[:positions].each do |cid, position|
         this_position = {}
         this_position['cid'] = cid.to_s
-        this_position['company_name'] = Company.where(cid: cid).first.name || 'Temporary Name Inc.'
-        this_position['market_cap'] = PricePoint.where(cid: cid, period: date).first.market_cap.round(1)
-        this_position['ltm_ebit'] = PricePoint.where(cid: cid, period: date).first.ltm_ebit.round(1)
-        this_position['ev'] = PricePoint.where(cid: cid, period: date).first.ev.round(1)
-        this_position['capital'] = (PricePoint.where(cid: cid, period: date).first.nwc + PricePoint.where(cid: cid, period: date).first.net_ppe).round(1)
-        this_position['earnings_yield'] = PricePoint.where(cid: cid, period: date).first.earnings_yield.round(4)
-        this_position['roc'] = PricePoint.where(cid: cid, period: date).first.roc.round(4)
+        this_position['company_name'] = data_table.company_table.where(cid: cid).name || '------name not found, Inc.'
+        current_pricepoint = data_table.where(cid: cid, period: date)
+        this_position['market_cap'] = current_pricepoint.market_cap.round(1)
+        this_position['ltm_ebit'] = current_pricepoint.ltm_ebit.round(1)
+        this_position['ev'] = current_pricepoint.ev.round(1)
+        this_position['capital'] = (current_pricepoint.nwc + current_pricepoint.net_ppe).round(1)
+        this_position['earnings_yield'] = current_pricepoint.earnings_yield.round(4)
+        this_position['roc'] = current_pricepoint.roc.round(4)
         this_position['share_count'] = position.share_count
-        this_position['beginning_price'] = (PricePoint.where(cid: cid, period: date).first.price).round(2)
+        this_position['beginning_price'] = (current_pricepoint.price).round(2)
         this_position['beginning_value'] = (this_position['share_count'] * this_position['beginning_price']).round(2)
-        end_period_price_point = end_date == '' ? nil : PricePoint.where(cid: cid, period: end_date).first
+        end_period_price_point = end_date == '' ? nil : data_table.where(cid: cid, period: end_date)
 
         this_position['ending_price'] = end_date == '' ? 'n/a' : (end_period_price_point.price).round(2)
         this_position['ending_value'] = end_date == '' ? 'n/a' : (this_position['share_count'] * this_position['ending_price']).round(2)
@@ -122,42 +127,40 @@ class ReportGenerator
   end
 
   def sp500_return(beginning, ending)
-    beginning_value = PricePoint.where(cid: 'sp500', period: beginning).first.price
-    ending_value = PricePoint.where(cid: 'sp500', period: ending).first.price
+    beginning_value = data_table.where(cid: 'sp500', period: beginning).price
+    ending_value = data_table.where(cid: 'sp500', period: ending).price
     (ending_value / beginning_value - 1).round(4)
   end
 
   def single_period_start(ending_date)
     case parameters["rebalance_frequency"]
     when 'annual'
-      (Date.strptime(ending_date, '%Y-%m-%d') - 1.year).to_s
+      time_back(ending_date, :year)
     end
   end
 
   def cumulative_cy_start(ending_date)
     case parameters["rebalance_frequency"]
     when 'annual'
-      (Date.strptime(ending_date, '%Y-%m-%d') - 1.year).to_s
+      time_back(ending_date, :year)
     end
   end
 
   def rolling_12_months_start(ending_date)
     case parameters["rebalance_frequency"]
     when 'annual'
-      (Date.strptime(ending_date, '%Y-%m-%d') - 1.year).to_s
+      time_back(ending_date, :year)
     end
   end
 
   def geometric_average(start_date, end_date)
     result = {}
     result['description'] = 'Geometric average return'
-
     beginning_balance = portfolio.as_of(start_date)[:total_market_value]
     ending_balance = portfolio.as_of(end_date)[:total_market_value]
     result['portfolio'] = ((ending_balance / beginning_balance) ** (1.0 / portfolio.periods.count) - 1).round(4)
-
-    sp500_beginning_balance = PricePoint.where(cid: 'sp500', period: start_date).first.price
-    sp500_ending_balance = PricePoint.where(cid: 'sp500', period: end_date).first.price
+    sp500_beginning_balance = data_table.where(cid: 'sp500', period: start_date).price
+    sp500_ending_balance = data_table.where(cid: 'sp500', period: end_date).price
     result['sp500'] = ((sp500_ending_balance / sp500_beginning_balance) ** (1.0 / portfolio.periods.count) - 1).round(4)
     result
   end
@@ -165,29 +168,26 @@ class ReportGenerator
   def arithmetic_average(start_date, end_date, by_period_results)
     result = {}
     result['description'] = 'Arithmetic average return'
-
     returns = by_period_results.map{|v| v['by_period']}.map{|v| v['return']}
     result['portfolio'] = (returns.inject{ |sum, el| sum + el }.to_f / returns.size).round(4)
-
     returns = by_period_results.map{|v| v['by_period']}.map{|v| v['sp500_return']}
     result['sp500'] = (returns.inject{ |sum, el| sum + el }.to_f / returns.size).round(4)
-
     result
   end
 
   def st_deviation_by_period(start_date, end_date, by_period_results)
     result = {}
     result['description'] = 'Standard deviation of returns, by period'
-    result['portfolio'] = by_period_results.map{|v| v['by_period']}.map{|v| v['return']}.extend(DescriptiveStatistics).standard_deviation.round(4)
-    result['sp500'] = by_period_results.map{|v| v['by_period']}.map{|v| v['sp500_return']}.extend(DescriptiveStatistics).standard_deviation.round(4)
+    result['portfolio'] = standard_deviation(by_period_results.map{|v| v['by_period']}.map{|v| v['return']}).round(4)
+    result['sp500'] = standard_deviation(by_period_results.map{|v| v['by_period']}.map{|v| v['sp500_return']}).round(4)
     result
   end
 
    def st_deviation_annualized(start_date, end_date, by_period_results)
     result = {}
     result['description'] = 'Standard deviation of returns, annualized'
-    result['portfolio'] = by_period_results.map{|v| v['annualized']}.map{|v| v['return']}.extend(DescriptiveStatistics).standard_deviation.round(4)
-    result['sp500'] = by_period_results.map{|v| v['annualized']}.map{|v| v['sp500_return']}.extend(DescriptiveStatistics).standard_deviation.round(4)
+    result['portfolio'] = standard_deviation(by_period_results.map{|v| v['annualized']}.map{|v| v['return']}).round(4)
+    result['sp500'] = standard_deviation(by_period_results.map{|v| v['annualized']}.map{|v| v['sp500_return']}).round(4)
     result
   end
 
@@ -204,7 +204,7 @@ class ReportGenerator
     result['description'] = 'Maximum drawdown'
     result['portfolio'] = max_drawdown(([initial_balance] << by_period_results.map{|k| k['balance']}).flatten)
 
-    sp500_starting_value = PricePoint.where(cid: 'sp500', period: parameters["start_date"]).first.price
+    sp500_starting_value = data_table.where(cid: 'sp500', period: parameters["start_date"]).price
     result['sp500'] = max_drawdown(([sp500_starting_value] << by_period_results.map{|k| k['sp500_value']}).flatten)
 
     result
