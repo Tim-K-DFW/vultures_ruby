@@ -1,5 +1,4 @@
 class Engine
-  include ActiveModel::Model
   require 'date'
 
   attr_reader :parameters, :portfolio
