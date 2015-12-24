@@ -90,8 +90,8 @@ class PriceTable
           nwc: nwc,
           ltm_ebit: ebit,
           ev: ev,
-          earnings_yield: (ebit > 0 && ev > 0) ? (ebit / ev).round(3) : 0,
-          roc: ebit > 0 ? (ebit / (net_ppe + nwc)).round(3) : 0,
+          earnings_yield: (ebit > 0 && ev > 0) ? (ebit / ev).round(4) : 0,
+          roc: ebit > 0 ? (ebit / (net_ppe + nwc)).round(4) : 0,
           price: price,
           delisted: false }
         delisted_check = /(\d+\/\d+\/\d+)/.match(row[i * 6 + 9])
