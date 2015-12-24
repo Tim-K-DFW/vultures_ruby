@@ -17,21 +17,16 @@ class PriceTable
   end
 
   def subset(args)
-    result = []
-      main_table.each do |key, value|
-        if (value.period == args[:period] &&
-            value.market_cap >= args[:cap_floor] &&
-            value.market_cap <= args[:cap_ceiling] &&
-            value.price > 0 &&
-            value.delisted == FALSE &&
-            value.ltm_ebit > 0 &&
-            value.roc > 0 &&
-            value.earnings_yield > 0 &&
-            value.roc < 10)
-          result << value
-        end
-      end
-    result
+    main_table.select { |k, v| 
+                      (v.period == args[:period] &&
+                      v.market_cap >= args[:cap_floor] &&
+                      v.market_cap <= args[:cap_ceiling] &&
+                      v.price > 0 &&
+                      v.delisted == FALSE &&
+                      v.ltm_ebit > 0 &&
+                      v.roc > 0 &&
+                      v.earnings_yield > 0 &&
+                      v.roc < 10) }.map { |k, v| v }
   end
 
   def where(args)
@@ -101,9 +96,12 @@ class PriceTable
         end
         new_entry = PricePoint.new(new_entry_fields)
         self.add(new_entry)
+        puts "#{((size / 218504.0).round(2) * 100).round.to_s}% complete; #{size} out of 218,504 entries added" if size % 10000 == 0
       end   # all PricePoints for this CID filled
       company_table.add(Company.new(name: row[0], cid: row[2], ticker: row[3]))
     end  # all PricePoints filled
+    puts '--------------------------------------------------------'
     puts "Data loaded! Time spent: #{(Time.now - start_time).round(2)} seconds."
+    puts '--------------------------------------------------------'
   end
 end

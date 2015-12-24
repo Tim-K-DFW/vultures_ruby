@@ -15,5 +15,6 @@ else
     puts 'JSON results saved to result.txt.'
     filename = ReportPrinter.new(results).generate
     puts "Full report saved to #{filename}."
+    puts '--------------------------------------------------------'
   end until !another_run?
 end

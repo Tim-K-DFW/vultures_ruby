@@ -9,6 +9,7 @@ class Engine
   end
 
   def perform
+    puts '--------------------------------------------------------'
     puts 'Trading...'
     start_time = Time.now
 
@@ -43,7 +44,9 @@ class Engine
         ).build
       @portfolio.rebalance(new_period: period, target: target_portfolio, parameters: parameters)
     end
+    puts '--------------------------------------------------------'
     puts "Trading complete! Time spent: #{(Time.now - start_time).round(2)} seconds."
+    puts '--------------------------------------------------------'
 
     ReportGenerator.new(data_table, portfolio, parameters).generate
   end

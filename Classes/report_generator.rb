@@ -16,7 +16,9 @@ class ReportGenerator
     @results['performance'] = generate_performance
     @results['aggregated'] = aggregated_performance(@results['performance'])
     @results['positions'] = generate_positions
+    puts '--------------------------------------------------------'
     puts "Reports generated! Time spent: #{(Time.now - start_time).round(2)} seconds."
+    puts '--------------------------------------------------------'
     @results
   end
 
