@@ -12,8 +12,14 @@ class ReportPrinter
       wb = p.workbook
       generate_summary(wb)
       generate_positions(wb)
-      p.serialize('test.xlsx')
+      p.serialize("Reports/#{filename}")
+      return filename
     end
+  end
+
+  def filename
+    p = results['parameters']
+    "results-#{p['position_count']}@#{p['market_cap_floor']}-#{p['market_cap_ceiling']}.xlsx"
   end
 
   def generate_summary(wb)
